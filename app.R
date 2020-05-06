@@ -65,10 +65,11 @@ ui <- fluidPage(
     # Application title
 
     titlePanel(
-        h1("COVID-19 Cases by State (STAT 479)",  
+        title=h1("COVID-19 Cases by State",  
            h3(em("Authors: Aiden Song, Shane McIntyre"),align="center"), 
            h3(" "),
-           align="center")
+           align="center"),
+        windowTitle="COVID-19 Cases by State"
     ),
     fluidRow(
         column(6,align="center",plotlyOutput("infectionMap")),
@@ -87,6 +88,7 @@ ui <- fluidPage(
             checkboxInput("dailyConfirmed", "Display Daily New Confirmed Cases", FALSE),
             checkboxInput("dailyTests", "Display Daily Tests Given", FALSE),
             checkboxInput("stayhome", "Display date of stay-at-home order", FALSE),
+            checkboxInput("infections","Display infections rate", FALSE),
             checkboxInput("log","Log Scale",FALSE)
             # Show a plot of the generated distribution
         ),
@@ -151,7 +153,9 @@ server <- function(input, output) {
         if(input$confirmedCases == TRUE){
             g = g + geom_line(data=new_data, aes(x=date, y = positive,color="Confirmed Cases"),size=1)
         }
-       
+        if(input$infections == T){
+            g = g + geom_line(data = new_data, aes(x = date, y = new_positive/totalTest, color="Infection Rate"), size = 1)
+        }
         
         if(input$dailyTests == TRUE){
             g = g + geom_area(data = new_data, aes(x=date, y=new_tests), fill="lightblue")
@@ -181,16 +185,24 @@ server <- function(input, output) {
         summary_map = left_join(summary_map, state_population, by="region")
         
         summary_map = summary_map %>% 
-            mutate(infection.per.100k = (positive/pop_2015)*1000000) %>%
-            mutate(infection.per.100k = cut(infection.per.100k, c(0, 500,1000,2500,10000,1000000)))
+            mutate(infection.per.100k.stats = (positive/pop_2015)*1000000) %>%
+            mutate(infection.per.100k = cut(infection.per.100k.stats, c(0, 500,1000,2500,10000,1000000)))
            
         state_centroids <- summarize(group_by( my_map, region),
-                                     x = mean(range(long)), y = mean(range(lat)))
+                                     x = mean(range(long)), y = mean(range(lat))) 
         names(state_centroids)[1] <- "state"
+        state_centroids$state = sapply(state_centroids$state,simpleCap)
+        
+        
+        confirmedPer100 = summary_map %>% select(state.full, infection.per.100k.stats) %>% distinct()
+        state_centroids = left_join(state_centroids, confirmedPer100, by=c("state" = "state.full")) %>% 
+            mutate(infection.per.100k.stats = round(infection.per.100k.stats,0))
+        
         
         g = ggplot(summary_map)+ labs(title="Number of Confirmed Cases per hundred thoudsands people") +
             geom_polygon(aes(long, lat, group = group, fill = infection.per.100k), col="#ecf0f1") +
-            geom_text(aes(x,y,label=sapply(state, simpleCap)), data=state_centroids,size=2) +
+            geom_text(aes(x,y,label=state), data=state_centroids,size=2) +
+            geom_text(aes(x,y,label=paste("\n\n\n", infection.per.100k.stats)), data=state_centroids, size=1.7)+
             ggthemes::theme_map() +
             scale_fill_brewer(palette = "Reds", na.value = "gray")
             
@@ -210,18 +222,27 @@ server <- function(input, output) {
         summary_map = left_join(summary_map, state_population, by="region")
         
         summary_map = summary_map %>% 
-            mutate(tests.per.100k = (totalTest/pop_2015)*1000000) %>%
-            mutate(tests.per.100k = cut(tests.per.100k, c(0,10000,15000,20000,30000,1000000)))
+            mutate(tests.per.1000.stats = (totalTest/pop_2015)*1000) %>%
+            mutate(tests.per.1000 = cut(tests.per.1000.stats, c(0,5,10,20,45,60,300)))
         
         state_centroids <- summarize(group_by( my_map, region),
                                      x = mean(range(long)), y = mean(range(lat)))
         names(state_centroids)[1] <- "state"
+        state_centroids$state = sapply(state_centroids$state,simpleCap)
         
-
+        testsPer100 = summary_map %>% select(state.full, tests.per.1000.stats) %>% distinct()
+        state_centroids = left_join(state_centroids, testsPer100, by=c("state" = "state.full")) %>% 
+            mutate(tests.per.1000.stats = round(tests.per.1000.stats,0))
+        
+        
+        
+        
+        
         g = ggplot(summary_map)+
-            labs(title="Total Tests given per hundred thoudsands people") + 
-            geom_polygon(aes(long, lat, group = group, fill =tests.per.100k ), col="#ecf0f1") +
-            geom_text(aes(x,y,label=sapply(state, simpleCap)), data=state_centroids,size=2) +
+            labs(title="Total Tests given per one thoudsand people") + 
+            geom_polygon(aes(long, lat, group = group, fill =tests.per.1000 ), col="#ecf0f1") +
+            geom_text(aes(x,y,label=state), data=state_centroids,size=2) +
+            geom_text(aes(x,y,label=paste("\n\n\n", tests.per.1000.stats)), data=state_centroids, size=1.7)+
             ggthemes::theme_map() +
             scale_fill_brewer(palette = "Reds", na.value = "gray")
         
