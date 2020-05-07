@@ -72,6 +72,31 @@ ui <- fluidPage(
         windowTitle="COVID-19 Cases by State"
     ),
     fluidRow(
+   
+        HTML(
+            paste(
+                h2("Project Description:", padding=20), "<br/>",
+                p("In this project, we are interested in how COVID-19 affects each states. We first looked at how the number of confirmed
+                  cases per hundred thousands people across different state to see how server covid is in each state adjusted to the state's
+                  population. Then we looked at how aggresive testings have done in that state, again adjusted to the state's population. From
+                  what we can see in the graph, testing is very positively correlated with the number of confirmed cases, some of the most 
+                  hit states have performed some of the most aggresive testings. However some of the state, even though it might seem like aggresive
+                  testings have been performed, the population adjusted data indicated otherwise (e.g. see California) "), "<br />",
+                p("Then we plot all the confirmed cases, total number of testings in the plot to see how the graph is growing. We also looked
+                  at daily new testings and daily new confirmed cases across different state. From the area under the curve graph we can see that
+                  some states like Wisconsin have done pretty aggresive testings because the daily new cases vs the daily new testings area is big
+                  whereas states like New Jersey, the daily new cases are almost half of the area of the daily new testings. We also looked at if state
+                  at home is help flatting the curve. Since most of the states are still climbing the curve and have not seen the curve flattening, it's
+                  hard to see if or when stay-at-home order would become effective.")
+            )
+            
+        ),
+        style="padding:20px"
+        
+        
+       
+    ),
+    fluidRow(
         column(6,align="center",plotlyOutput("infectionMap")),
         column(6,align="center", plotlyOutput("testsMap"))
     ),
@@ -153,16 +178,21 @@ server <- function(input, output) {
         if(input$confirmedCases == TRUE){
             g = g + geom_line(data=new_data, aes(x=date, y = positive,color="Confirmed Cases"),size=1)
         }
+        
         if(input$infections == T){
             g = g + geom_line(data = new_data, aes(x = date, y = new_positive/totalTest, color="Infection Rate"), size = 1)
         }
         
+
         if(input$dailyTests == TRUE){
-            g = g + geom_area(data = new_data, aes(x=date, y=new_tests), fill="lightblue")
+            g =  g + 
+                stat_smooth(data=new_data, mapping=aes(x=date,y=new_tests),geom = 'area', method = 'loess', 
+                            span = .2, alpha = 1/2, fill = 'blue', fullrange = F)
         }
         if(input$dailyConfirmed == TRUE){
-            g = g  + 
-                geom_area(data=new_data,aes(x=date,y=new_positive),fill="yellow")
+            g = g+
+                stat_smooth(mapping=aes(x=date,y=new_positive), data=new_data,geom = 'area', method = 'loess', 
+                            span = .2, alpha = 1/2, fill = 'red', fullrange = F)
         }
         if(input$stayhome == TRUE){
             g = g + geom_vline(data=stay_home, mapping=aes(xintercept=as.numeric(stayHomeDate),color="Date of Stay-at-home order"),size=1)

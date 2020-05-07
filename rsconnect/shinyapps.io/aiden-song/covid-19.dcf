@@ -5,8 +5,8 @@ account: aiden-song
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 2125463
-bundleId: 3112643
+bundleId: 3118354
 url: https://aiden-song.shinyapps.io/covid-19/
-when: 1588797767.50539
+when: 1588893039.01274
 asMultiple: FALSE
 asStatic: FALSE
